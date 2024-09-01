@@ -2,7 +2,7 @@
 
 This is a CLI tool for Nextcloud Passwords. It allows you to interact with your passwords from the command line. It also comes with a password generator.
 
-Additionally, a tool top copy files to and from the Nextcloud is included.
+Additionally, a tool to copy files to and from the Nextcloud is included.
 
 ### Installation
 
