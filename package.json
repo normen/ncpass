@@ -1,0 +1,32 @@
+{
+  "name": "ncpass",
+  "version": "0.0.1",
+  "description": "A command line password manager for Nextcloud",
+  "main": "index.js",
+  "bin": {
+    "ncpass": "./index.js"
+  },
+  "scripts": {
+    "start": "node -r esm index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/normen/ncpass.git"
+  },
+  "keywords": [
+    "nextcloud",
+    "passwords",
+    "keychain"
+  ],
+  "author": "Normen Hansen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/normen/ncpass/issues"
+  },
+  "homepage": "https://github.com/normen/ncpass#readme",
+  "dependencies": {
+    "esm": "^3.2.25",
+    "passwords-client": "1.0.0"
+  }
+}
