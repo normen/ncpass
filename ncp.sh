@@ -24,9 +24,10 @@ if [ "$#" -lt 2 ]; then
 fi
 
 check_nc_folder_exists() {
+  nc_path=$(urlencode "$1")
   curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     -X PROPFIND \
-    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$1" | grep -q "404 Not Found"
+    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path" | grep -q "404 Not Found"
 }
 
 # TODO: use file name automatically if folder is given
@@ -38,12 +39,12 @@ put_file() {
     file_name=$(basename "$1")
     file_name="/$file_name"
   fi
-  echo "Putting $2$file_name.."
+  nc_path=$(urlencode "$2$file_name")
   curl -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     --progress-bar \
     -X PUT --data-binary \
     @"$1" \
-    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$2$file_name" > /dev/null
+    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path" > /dev/null
 }
 
 get_file() {
@@ -51,10 +52,26 @@ get_file() {
     file_name=$(basename "$1")
     file_name="/$file_name"
   fi
+  nc_path=$(urlencode "$1")
   curl -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     --progress-bar \
     -X GET \
-    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$1" > "$2$file_name"
+    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path" > "$2$file_name"
+}
+
+urlencode() {
+  # urlencode <string>
+  old_lc_collate=$LC_COLLATE
+  LC_COLLATE=C
+  local length="${#1}"
+  for (( i = 0; i < length; i++ )); do
+    local c="${1:i:1}"
+    case $c in
+      [a-zA-Z0-9.~_-]) printf "$c" ;;
+      *) printf '%%%02X' "'$c" ;;
+    esac
+  done
+  LC_COLLATE=$old_lc_collate
 }
 
 # check which parameter starts with nc:
