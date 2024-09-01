@@ -1,6 +1,8 @@
 ## ncpass - CLI tool for Nextcloud Passwords
 
-This is a CLI tool for Nextcloud Passwords. It allows you to interact with your passwords from the command line.
+This is a CLI tool for Nextcloud Passwords. It allows you to interact with your passwords from the command line. It also comes with a password generator.
+
+Additionally, a tool top copy files to and from the Nextcloud is included.
 
 ### Installation
 
@@ -15,7 +17,7 @@ You will need to have the following environment variables set:
 - `NEXTCLOUD_USER`: Your Nextcloud username
 - `NEXTCLOUD_TOKEN`: Your Nextcloud Token (you can generate one in your Nextcloud settings)
 
-### Usage
+### NCPass Usage
 
 ```
 ncpass <command> <label> <user> <password>
@@ -41,4 +43,26 @@ ncpass generate my_label username
 Retrieve a password from your Nextcloud Passwords vault:
 ```bash
 ncpass get my_label
+```
+
+### NCP Usage
+
+```
+ncp [nc:]<file> [nc:]<folder_or_file>
+```
+
+#### Examples
+
+Copy a file to the Nextcloud:
+```bash
+ncp file.txt nc:folder
+
+ncp file.txt nc:folder/file_new_name.txt
+```
+
+Copy a file from the Nextcloud:
+```bash
+ncp nc:folder/file.txt ./
+
+ncp nc:folder/file.txt ./file_new_name.txt
 ```
