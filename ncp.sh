@@ -23,7 +23,7 @@ if [ "$#" -lt 2 ]; then
   exit 1
 fi
 
-check_nc_folder_exists() {
+check_nc_path_exists() {
   nc_path=$(urlencode "$1")
   curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     -X PROPFIND \
@@ -32,7 +32,7 @@ check_nc_folder_exists() {
 
 # TODO: use file name automatically if folder is given
 put_file() {
-  check_nc_folder_exists "$2"
+  check_nc_path_exists "$2"
   if [ $? -eq 0 ]; then
     echo "" >/dev/null
   else
@@ -48,6 +48,11 @@ put_file() {
 }
 
 get_file() {
+  check_nc_path_exists "$1"
+  if [ $? -eq 0 ]; then
+    echo "$1 not found"
+    exit 1
+  fi
   if [ -d "$2" ]; then
     file_name=$(basename "$1")
     file_name="/$file_name"
