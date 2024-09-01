@@ -35,16 +35,15 @@ put_file() {
   if [ $? -eq 0 ]; then
     echo "" >/dev/null
   else
-    #echo "Path $2 exists, use $file_name"
     file_name=$(basename "$1")
     file_name="/$file_name"
   fi
   echo "Putting $2$file_name.."
-  curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
+  curl -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     --progress-bar \
     -X PUT --data-binary \
     @"$1" \
-    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$2$file_name"
+    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$2$file_name" > /dev/null
 }
 
 get_file() {
@@ -52,7 +51,7 @@ get_file() {
     file_name=$(basename "$1")
     file_name="/$file_name"
   fi
-  curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
+  curl -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     --progress-bar \
     -X GET \
     "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$1" > "$2$file_name"
