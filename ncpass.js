@@ -1,5 +1,7 @@
 #!/usr/bin/env -S node -r esm
 import { PasswordsClient, Password } from 'passwords-client';
+// get version from package.json
+import { version } from './package.json';
 
 // get login data from environment
 const server_url = process.env.NEXTCLOUD_URL;
@@ -13,9 +15,10 @@ if(!server_url || !server_user || !server_token){
 }
 
 if (process.argv.length < 3) {
+  console.error('NCPass v' + version);
   console.error('Usage: ncpass <command> <label> <user> <password>');
   console.error('Commands: set, get, getuser, generate, delete, list');
-  process.exit(1);
+  process.exit(0);
 }
 
 const api = new PasswordsClient({
@@ -79,6 +82,7 @@ switch(command){
       getPass(in_label).then((res) => console.log(res));
     }
     break;
+  case 'gen':
   case 'generate':
     if(!in_label){
       console.error('missing arguments! at least label is required');
@@ -105,8 +109,38 @@ switch(command){
       console.error('Error: ' + err);
     });
     break;
+  case 'del':
   case 'delete':
-    // TODO: first search for the label, then delete the password using the id
+    if(!in_label){
+      console.error('missing arguments! at least label is required');
+      process.exit(1);
+    }
+    // generate a password
+    switch(args.length){
+      case 2:
+        in_user = '';
+        break;
+      case 3:
+        in_user = args[2];
+        break;
+      default:
+        console.error('missing arguments! at least label is required');
+        process.exit(1);
+        break;
+    }
+    getExisting(in_label, in_user).then((gen_pass) => {
+      if(gen_pass.getId()){
+        passwordsRepository.delete(gen_pass).then((res) => {
+          console.error('Deleted: ', gen_pass.getLabel(), gen_pass.getUserName());
+        }).catch((err) => {
+          console.error('Error: ' + err);
+        });
+      } else {
+        console.error('Password not found: ', gen_pass.getLabel(), gen_pass.getUserName());
+      }
+    }).catch((err) => {
+      console.error('Error: ' + err);
+    });
     break;
   case 'list':
     findPasses();
@@ -119,10 +153,14 @@ function updateGenerate(password){
   if(!password.getId()) {
     passwordsRepository.create(password).then((res) => {
       console.log(res.getPassword());
+    }).catch((err) => {
+      console.error('Error: ' + err);
     });
   } else {
     passwordsRepository.update(password).then((res) => {
       console.log(res.getPassword());
+    }).catch((err) => {
+      console.error('Error: ' + err);
     });
   }
 }
