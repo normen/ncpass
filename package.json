@@ -2,12 +2,12 @@
   "name": "ncpass",
   "version": "0.0.1",
   "description": "A command line password manager for Nextcloud",
-  "main": "index.js",
+  "main": "ncpass.js",
   "bin": {
-    "ncpass": "./index.js"
+    "ncpass": "./ncpass.js"
   },
   "scripts": {
-    "start": "node -r esm index.js",
+    "start": "node -r esm ncpass.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
