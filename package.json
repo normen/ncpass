@@ -4,7 +4,7 @@
   "description": "A command line password manager for Nextcloud",
   "main": "ncpass.js",
   "bin": {
-    "ncpass": "./ncpass.js"
+    "ncpass": "ncpass.js"
   },
   "scripts": {
     "start": "node -r esm ncpass.js",
