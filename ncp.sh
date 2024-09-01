@@ -33,17 +33,18 @@ check_nc_folder_exists() {
 put_file() {
   check_nc_folder_exists "$2"
   if [ $? -eq 0 ]; then
-    echo "Path $2 does not exist, assuming file name"
+    echo "" >/dev/null
   else
+    #echo "Path $2 exists, use $file_name"
     file_name=$(basename "$1")
     file_name="/$file_name"
-    echo "Path $2 exists, use $file_name"
   fi
+  echo "Putting $2$file_name.."
   curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     --progress-bar \
     -X PUT --data-binary \
     @"$1" \
-    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$2$filename"
+    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$2$file_name"
 }
 
 get_file() {
