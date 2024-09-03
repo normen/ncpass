@@ -33,7 +33,6 @@ fi
 
 check_nc_path_exists() {
   nc_path=$(urlencode "$1")
-  echo "$1 -> $nc_path"
   curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     -X PROPFIND \
     "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path" | grep -q "404 Not Found"
