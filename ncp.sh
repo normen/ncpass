@@ -5,7 +5,6 @@
 # TODO:
 # - recursive copy of folders
 #   (need to track base folder and mkdirs)
-# - other wildcards than trailing (/*)
 
 # check dependencies
 if ! command -v curl &> /dev/null; then
@@ -41,13 +40,14 @@ fi
 
 # check parameter count
 if [ "$#" -lt 2 ]; then
-  echo "Usage: ncp [nc:]<file> [nc:]<folder>"
+  echo "Usage: ncp [nc:]<file/wildcard> [nc:]<filename/folder>"
   echo ""
   echo "Path starting with nc: is a nextcloud path."
   echo ""
-  echo "Wildcards are supported, for Nextcloud paths"
-  echo "only a trailing wildcard (/*) is supported."
-  echo "Nextcloud wildcards need to be enclosed in quotes."
+  echo "Nextcloud paths with wildcards need to be escaped or"
+  echo "enclosed in quotes to not be expanded by the shell."
+  echo ""
+  echo "Copy from nextcloud to nextcloud is not supported."
   exit 1
 fi
 
@@ -83,7 +83,7 @@ put_file() {
 put_files() {
   for file in $1; do
     if [ -f "$file" ]; then
-      echo "$file"
+      echo "$file -> $2"
       put_file "$file" "$2"
     else
       echo "Skipping folder $file"
@@ -108,9 +108,8 @@ get_file() {
 }
 
 get_files() {
-  # get wildcards (e.g. MyFiles/*) from input and download each file
-  if [[ "$1" == *"/*" ]]; then
-    nc_path=$(urlencode "${1%/*}")
+  if [[ "$1" == *"*"* ]]; then
+    nc_path=$(urlencode "$(dirname "$1")")
     folder_content=$(curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
       -X PROPFIND \
       "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path")
@@ -120,16 +119,21 @@ get_files() {
       files=$(echo "$files" | tail -n +2)
       for file in $files; do
         # remove the nextcloud path (/remote.php/dav/files/$NEXTCLOUD_USER)
-        file="${file#*/$NEXTCLOUD_USER}"
-        get_files "$file" "$2"
+        file="${file#*/$NEXTCLOUD_USER/}"
+        # check if the file matches the wildcard in $1
+        if [[ $file == $1 ]]; then
+          get_files "$file" "$2"
+        #else
+          #echo "Skipping $file"
+        fi
       done
     else
-      echo "Folder $1 not found in cloud"
+      echo "Folder $nc_path not found in cloud"
     fi
   else
     check_nc_path "$1"
-    is_folder=$?
-    if [ $is_folder -eq 1 ]; then # folder
+    path_type=$?
+    if [ $path_type -eq 1 ]; then # folder
       echo "Skipping folder $1"
       # TODO: recursively get all files in the folder
       # remove the last character if it is a /
@@ -138,11 +142,11 @@ get_files() {
       #else
         #get_files "$1/*" "$2"
       #fi
-    elif [ $is_folder -eq 2 ]; then # file
-      echo "$1"
+    elif [ $path_type -eq 2 ]; then # file
+      echo "$1 -> $2"
       # download the file
       get_file "$1" "$2"
-    elif [ $is_folder -eq 0 ]; then # not found
+    elif [ $path_type -eq 0 ]; then # not found
       echo "File $1 not found in cloud"
     else
       echo "File $1 unknown error"
@@ -168,10 +172,14 @@ first_params="${@:1:$(($#-1))}"
 last_parm="${@: -1}"
 if [[ "$first_params" == "nc:"* ]]; then
   nextcloud_path="${first_params:3}"
+  #remove prefix slash if it exists
+  nextcloud_path="${nextcloud_path#/}"
   local_path="$last_parm"
   get_files "$nextcloud_path" "$local_path"
 elif [[ "$last_parm" == "nc:"* ]]; then
   nextcloud_path="${last_parm:3}"
+  #remove prefix slash if it exists
+  nextcloud_path="${nextcloud_path#/}"
   local_path="$first_params"
   put_files "$local_path" "$nextcloud_path"
 fi
