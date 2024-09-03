@@ -14,13 +14,6 @@ if(!server_url || !server_user || !server_token){
   process.exit(1);
 }
 
-if (process.argv.length < 3) {
-  console.error('NCPass v' + version);
-  console.error('Usage: ncpass <command> <label> <user> <password>');
-  console.error('Commands: set, get, getuser, generate, delete, list');
-  process.exit(0);
-}
-
 const api = new PasswordsClient({
   baseUrl: server_url + "/",
   user: server_user,
@@ -146,7 +139,26 @@ switch(command){
     findPasses();
     break;
   default:
-    console.error('invalid command');
+    console.error('NCPass v' + version);
+    console.error('');
+    console.error('Usage: ncpass <command> <label> <user> <password>');
+    console.error('Commands: set, get, getuser, generate, delete, list');
+    break;
+  case '-h':
+  case '--help':
+    console.error('');
+    console.error('Examples:');
+    console.error('');
+    console.error('Generate a pass and store it:');
+    console.error('ncpass generate my_pass_name');
+    console.error('');
+    console.error('Get password by label (optionally also by username)');
+    console.error('ncpass get my_pass_name');
+    console.error('ncpass get my_pass_name username');
+    console.error('');
+    console.error('Set a password (optionally with username)');
+    console.error('ncpass set my_pass_name password');
+    console.error('ncpass set my_pass_name username password');
 }
 
 function updateGenerate(password){
