@@ -2,6 +2,9 @@
 # allows copying files to and from nextcloud
 # requires NEXTCLOUD_TOKEN, NEXTCLOUD_USER, NEXTCLOUD_URL to be set
 
+# TODO: recursive copy of folders
+#       (need to track base folder and mkdirs)
+
 # check environment variables
 if [ -z "$NEXTCLOUD_TOKEN" ]; then
   echo "NEXTCLOUD_TOKEN not set"
@@ -18,19 +21,36 @@ fi
 
 # check parameter count
 if [ "$#" -lt 2 ]; then
-  echo "Usage: $0 [nc:<file>] [nc:<folder>]"
-  echo "Path starting with nc: is a nextcloud path"
+  echo "Usage: ncp [nc:<file>] [nc:<folder>]"
+  echo ""
+  echo "Path starting with nc: is a nextcloud path."
+  echo ""
+  echo "Wildcards are supported, for Nextcloud paths"
+  echo "only a trailing wildcard is supported."
+  echo "Nextcloud wildcards need to be enclosed in quotes."
   exit 1
 fi
 
 check_nc_path_exists() {
   nc_path=$(urlencode "$1")
+  echo "$1 -> $nc_path"
   curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     -X PROPFIND \
     "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path" | grep -q "404 Not Found"
 }
 
-# TODO: use file name automatically if folder is given
+check_nc_path_is_folder() {
+  nc_path=$(urlencode "$1")
+  prop_description=$(curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
+    -X PROPFIND \
+    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path")
+  if [[ "$prop_description" == *"d:collection"* ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
+
 put_file() {
   check_nc_path_exists "$2"
   if [ $? -eq 0 ]; then
@@ -47,21 +67,78 @@ put_file() {
     "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path" > /dev/null
 }
 
+put_files() {
+  for file in $1; do
+    if [ -f "$file" ]; then
+      echo "$file"
+      put_file "$file" "$2"
+    else
+      echo "Skipping folder $file"
+    fi
+  done
+}
+
 get_file() {
   check_nc_path_exists "$1"
   if [ $? -eq 0 ]; then
-    echo "$1 not found"
+    echo "$1 not found on get"
     exit 1
   fi
   if [ -d "$2" ]; then
     file_name=$(basename "$1")
-    file_name="/$file_name"
+    file_name="$2/$file_name"
+  else
+    file_name="$2"
   fi
+  #TODO: recursive mkdirs
+  #mkdirs=$(dirname "$2$filename")
   nc_path=$(urlencode "$1")
   curl -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     --progress-bar \
     -X GET \
-    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path" > "$2$file_name"
+    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path" > "$file_name"
+}
+
+get_files() {
+  # get wildcards (e.g. MyFiles/*) from input and download each file
+  if [[ "$1" == *"/*" ]]; then
+    nc_path=$(urlencode "${1%/*}")
+    folder_content=$(curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
+      -X PROPFIND \
+      "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path")
+    if [[ "$folder_content" == *"d:collection"* ]]; then
+      files=$(echo "$folder_content" | grep -oPm1 "(?<=<d:href>)[^<]+")
+      # first file is the folder itself, remove first line
+      files=$(echo "$files" | tail -n +2)
+      for file in $files; do
+        # remove the nextcloud path (/remote.php/dav/files/$NEXTCLOUD_USER)
+        file="${file#*/$NEXTCLOUD_USER}"
+        get_files "$file" "$2"
+      done
+    fi
+  else
+    check_nc_path_is_folder "$1"
+    if [ $? -eq 1 ]; then
+      echo "Skipping folder $1 is a folder"
+      # TODO: recursively get all files in the folder
+      # remove the last character if it is a /
+      #if [[ "$1" == */ ]]; then
+        #get_files "${1%?}" "$2"
+      #else
+        #get_files "$1/*" "$2"
+      #fi
+    else
+      check_nc_path_exists "$1"
+      if [ $? -eq 0 ]; then
+        echo "$1 not found"
+        exit 1
+      else
+        echo "$1"
+        # download the file
+        get_file "$1" "$2"
+      fi
+    fi
+  fi
 }
 
 urlencode() {
@@ -72,23 +149,21 @@ urlencode() {
   for (( i = 0; i < length; i++ )); do
     local c="${1:i:1}"
     case $c in
-      [a-zA-Z0-9.~_-]) printf "$c" ;;
+      [a-zA-Z0-9.~_-//]) printf "$c" ;;
       *) printf '%%%02X' "'$c" ;;
     esac
   done
   LC_COLLATE=$old_lc_collate
 }
 
-# check which parameter starts with nc:
-# - first parameter is the file to copy
-# - second parameter is the destination
-# - parameter starting with nc: is the nextcloud folder
-if [[ "$1" == "nc:"* ]]; then
-  NEXTCLOUD_PATH="${1:3}"
-  LOCAL_PATH="$2"
-  get_file "$NEXTCLOUD_PATH" "$LOCAL_PATH"
-elif [[ "$2" == "nc:"* ]]; then
-  NEXTCLOUD_PATH="${2:3}"
-  LOCAL_PATH="$1"
-  put_file "$LOCAL_PATH" "$NEXTCLOUD_PATH"
+first_params="${@:1:$(($#-1))}"
+last_parm="${@: -1}"
+if [[ "$first_params" == "nc:"* ]]; then
+  nextcloud_path="${first_params:3}"
+  local_path="$last_parm"
+  get_files "$nextcloud_path" "$local_path"
+elif [[ "$last_parm" == "nc:"* ]]; then
+  nextcloud_path="${last_parm:3}"
+  local_path="$first_params"
+  put_files "$local_path" "$nextcloud_path"
 fi
