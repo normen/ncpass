@@ -7,6 +7,24 @@
 #   (need to track base folder and mkdirs)
 # - other wildcards than trailing (/*)
 
+# check dependencies
+if ! command -v curl &> /dev/null; then
+  echo "curl not found"
+  exit 1
+fi
+if ! command -v grep &> /dev/null; then
+  echo "grep not found"
+  exit 1
+fi
+if ! command -v basename &> /dev/null; then
+  echo "basename not found"
+  exit 1
+fi
+if ! command -v dirname &> /dev/null; then
+  echo "dirname not found"
+  exit 1
+fi
+
 # check environment variables
 if [ -z "$NEXTCLOUD_TOKEN" ]; then
   echo "NEXTCLOUD_TOKEN not set"
@@ -33,14 +51,7 @@ if [ "$#" -lt 2 ]; then
   exit 1
 fi
 
-check_nc_path_exists() {
-  nc_path=$(urlencode "$1")
-  curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
-    -X PROPFIND \
-    "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path" | grep -q "404 Not Found"
-}
-
-check_nc_path_is_folder() {
+check_nc_path() {
   nc_path=$(urlencode "$1")
   prop_description=$(curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     -X PROPFIND \
@@ -55,10 +66,9 @@ check_nc_path_is_folder() {
 }
 
 put_file() {
-  check_nc_path_exists "$2"
-  if [ $? -eq 0 ]; then
-    echo "" >/dev/null
-  else
+  check_nc_path "$2"
+  path_type=$?
+  if [ $path_type -eq 1 ]; then # folder
     file_name=$(basename "$1")
     file_name="/$file_name"
   fi
@@ -117,7 +127,7 @@ get_files() {
       echo "Folder $1 not found in cloud"
     fi
   else
-    check_nc_path_is_folder "$1"
+    check_nc_path "$1"
     is_folder=$?
     if [ $is_folder -eq 1 ]; then # folder
       echo "Skipping folder $1"
