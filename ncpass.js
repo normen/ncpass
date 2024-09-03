@@ -21,6 +21,7 @@ const api = new PasswordsClient({
   token: server_token
 });
 
+const folderRepository = api.getFolderRepository();
 const passwordsRepository = api.getPasswordRepository();
 
 // parse command line arguments
@@ -159,7 +160,7 @@ switch(command){
     console.error('Usage: ncpass <command> <label> <user> <password> [options]');
     console.error('');
     console.error('Commands: set, get, getuser, generate, delete, list');
-    console.error('Options: --url <url>, --notes <notes>, --username <username>, --password <password>');
+    console.error('Options: --url <url>, --notes <notes>, --folder <folder>, --username <username>, --password <password>');
     break;
   case '-h':
   case '--help':
@@ -180,7 +181,7 @@ switch(command){
     console.error('ncpass set my_pass_name username password');
     console.error('');
     console.error('Set parameters for an existing password (url, notes, folder)');
-    console.error('ncpass set my_pass_name --url my_url --notes my_notes');
+    console.error('ncpass set my_pass_name --url my_url --notes my_notes --folder my_folder');
 }
 
 function updateGenerate(password, show = true){
@@ -222,13 +223,17 @@ async function getExisting(label, user = ''){
     ret.setUrl(options.url);
   if(options.notes)
     ret.setNotes(options.notes);
-  // TODO: folders..
-  //if(options.folder)
-    //ret.setFolder(options.folder);
   if(options.username)
     ret.setUserName(options.username);
   if(options.password)
     ret.setPassword(options.password);
+  if(options.folder){
+    const id = await getFolderId(options.folder);
+    if(id)
+      ret.setFolder(id);
+    else
+      console.error('Folder not found: ', options.folder);
+  }
   return ret;
 }
 
@@ -262,6 +267,18 @@ async function findPasses(){
   for (let password of passwordCollection) {
     console.log(password.getLabel(),password.getUserName());
   }
+}
+
+async function getFolderId(name) {
+  const folders = await folderRepository.findAll()
+  if(name === 'Home')
+    return "00000000-0000-0000-0000-000000000000";
+  for (let folder of folders) {
+    if (folder.getLabel() === name) {
+      return folder.getId();
+    }
+  }
+  return null;
 }
 
 function generatePassword(){
