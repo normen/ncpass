@@ -2,8 +2,10 @@
 # allows copying files to and from nextcloud
 # requires NEXTCLOUD_TOKEN, NEXTCLOUD_USER, NEXTCLOUD_URL to be set
 
-# TODO: recursive copy of folders
-#       (need to track base folder and mkdirs)
+# TODO:
+# - recursive copy of folders
+#   (need to track base folder and mkdirs)
+# - other wildcards than trailing (/*)
 
 # check environment variables
 if [ -z "$NEXTCLOUD_TOKEN" ]; then
@@ -21,12 +23,12 @@ fi
 
 # check parameter count
 if [ "$#" -lt 2 ]; then
-  echo "Usage: ncp [nc:<file>] [nc:<folder>]"
+  echo "Usage: ncp [nc:]<file> [nc:]<folder>"
   echo ""
   echo "Path starting with nc: is a nextcloud path."
   echo ""
   echo "Wildcards are supported, for Nextcloud paths"
-  echo "only a trailing wildcard is supported."
+  echo "only a trailing wildcard (/*) is supported."
   echo "Nextcloud wildcards need to be enclosed in quotes."
   exit 1
 fi
@@ -43,10 +45,12 @@ check_nc_path_is_folder() {
   prop_description=$(curl -s -H "Authorization: Bearer $NEXTCLOUD_TOKEN" \
     -X PROPFIND \
     "$NEXTCLOUD_URL/remote.php/dav/files/$NEXTCLOUD_USER/$nc_path")
-  if [[ "$prop_description" == *"d:collection"* ]]; then
+  if [[ "$prop_description" == *"404 Not Found"* ]]; then
+    return 0
+  elif [[ "$prop_description" == *"d:collection"* ]]; then
     return 1
   else
-    return 0
+    return 2
   fi
 }
 
@@ -78,11 +82,6 @@ put_files() {
 }
 
 get_file() {
-  check_nc_path_exists "$1"
-  if [ $? -eq 0 ]; then
-    echo "$1 not found on get"
-    exit 1
-  fi
   if [ -d "$2" ]; then
     file_name=$(basename "$1")
     file_name="$2/$file_name"
@@ -114,11 +113,14 @@ get_files() {
         file="${file#*/$NEXTCLOUD_USER}"
         get_files "$file" "$2"
       done
+    else
+      echo "Folder $1 not found in cloud"
     fi
   else
     check_nc_path_is_folder "$1"
-    if [ $? -eq 1 ]; then
-      echo "Skipping folder $1 is a folder"
+    is_folder=$?
+    if [ $is_folder -eq 1 ]; then # folder
+      echo "Skipping folder $1"
       # TODO: recursively get all files in the folder
       # remove the last character if it is a /
       #if [[ "$1" == */ ]]; then
@@ -126,22 +128,19 @@ get_files() {
       #else
         #get_files "$1/*" "$2"
       #fi
+    elif [ $is_folder -eq 2 ]; then # file
+      echo "$1"
+      # download the file
+      get_file "$1" "$2"
+    elif [ $is_folder -eq 0 ]; then # not found
+      echo "File $1 not found in cloud"
     else
-      check_nc_path_exists "$1"
-      if [ $? -eq 0 ]; then
-        echo "$1 not found"
-        exit 1
-      else
-        echo "$1"
-        # download the file
-        get_file "$1" "$2"
-      fi
+      echo "File $1 unknown error"
     fi
   fi
 }
 
 urlencode() {
-  # urlencode <string>
   old_lc_collate=$LC_COLLATE
   LC_COLLATE=C
   local length="${#1}"

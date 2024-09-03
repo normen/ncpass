@@ -53,16 +53,23 @@ ncp [nc:]<file> [nc:]<folder_or_file>
 
 #### Examples
 
-Copy a file to the Nextcloud:
+Copy files to Nextcloud:
 ```bash
 ncp file.txt nc:folder
 
 ncp file.txt nc:folder/file_new_name.txt
+
+ncp *.txt nc:folder
 ```
 
-Copy a file from the Nextcloud:
+Copy a file from Nextcloud:
 ```bash
 ncp nc:folder/file.txt ./
 
 ncp nc:folder/file.txt ./file_new_name.txt
+```
+
+Copy all files from Nextcloud folder:
+```bash
+ncp nc:folder/* ./folder
 ```
