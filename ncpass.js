@@ -1,4 +1,5 @@
 #!/usr/bin/env -S node -r esm
+'use strict';
 import { PasswordsClient, Password } from 'passwords-client';
 // get version from package.json
 import { version } from './package.json';
@@ -30,9 +31,24 @@ let in_label = args[1];
 let in_user = '';
 let in_pass = '';
 
+// get all option parameters and their values (e.g. --url my_url) in separate array and remove them from the args array
+let options = {};
+for (let i = 0; i < args.length; i++){
+  if(args[i].startsWith('--')){
+    let key = args[i].substring(2);
+    let val = args[i+1];
+    options[key] = val;
+    args.splice(i, 2);
+  }
+}
+
 // execute the command
 switch(command){
   case 'set':
+    if(!in_label){
+      console.error('missing arguments! at least label is required');
+      process.exit(1);
+    }
     // get user/password from args 2 and 3, depending on the argument count (1 = pass, 2= user/pass)
     switch(args.length){
       case 3:
@@ -44,13 +60,14 @@ switch(command){
         in_pass = args[3];
         break;
       default:
-        console.error('missing arguments! at least label and password is required');
-        process.exit(1);
         break;
     }
     getExisting(in_label, in_user).then((pass) => {
-      pass.setPassword(in_pass);
-      updateGenerate(pass);
+      if(in_pass)
+        pass.setPassword(in_pass);
+      else if(!pass.getId())
+        throw 'missing arguments! at least label and password is required';
+      updateGenerate(pass, false);
     }).catch((err) => {
       console.error('Error: ' + err);
     });
@@ -90,8 +107,6 @@ switch(command){
         in_user = args[2];
         break;
       default:
-        console.error('missing arguments! at least label is required');
-        process.exit(1);
         break;
     }
     const new_pass = generatePassword();
@@ -141,16 +156,20 @@ switch(command){
   default:
     console.error('NCPass v' + version);
     console.error('');
-    console.error('Usage: ncpass <command> <label> <user> <password>');
+    console.error('Usage: ncpass <command> <label> <user> <password> [options]');
+    console.error('');
     console.error('Commands: set, get, getuser, generate, delete, list');
+    console.error('Options: --url <url>, --notes <notes>, --username <username>, --password <password>');
     break;
   case '-h':
   case '--help':
-    console.error('');
     console.error('Examples:');
     console.error('');
     console.error('Generate a pass and store it:');
     console.error('ncpass generate my_pass_name');
+    console.error('');
+    console.error('Generate a pass and store it with username and url:');
+    console.error('ncpass generate my_pass_name username --url my_url');
     console.error('');
     console.error('Get password by label (optionally also by username)');
     console.error('ncpass get my_pass_name');
@@ -159,18 +178,23 @@ switch(command){
     console.error('Set a password (optionally with username)');
     console.error('ncpass set my_pass_name password');
     console.error('ncpass set my_pass_name username password');
+    console.error('');
+    console.error('Set parameters for an existing password (url, notes, folder)');
+    console.error('ncpass set my_pass_name --url my_url --notes my_notes');
 }
 
-function updateGenerate(password){
+function updateGenerate(password, show = true){
   if(!password.getId()) {
     passwordsRepository.create(password).then((res) => {
-      console.log(res.getPassword());
+      if(show) console.log(res.getPassword());
+      //console.error("Created: ", res.getLabel());
     }).catch((err) => {
       console.error('Error: ' + err);
     });
   } else {
     passwordsRepository.update(password).then((res) => {
-      console.log(res.getPassword());
+      if(show) console.log(res.getPassword());
+      //console.error("Updated: ", res.getLabel());
     }).catch((err) => {
       console.error('Error: ' + err);
     });
@@ -180,18 +204,31 @@ function updateGenerate(password){
 async function getExisting(label, user = ''){
   let passwordCollection = await passwordsRepository.findAll();
   // show all in collection
+  var ret = new Password();
+  ret.setLabel(label);
   for (let password of passwordCollection) {
     if(password.getLabel() == label) {
-      if(user == '')
-        return password;
-      else if(password.getUserName() == user)
-        return password;
+      if(user == ''){
+        ret = password;
+        break;
+      }
+      else if(password.getUserName() == user) {
+        ret = password;
+        break;
+      }
     }
   }
-  const ret = new Password();
-  ret.setLabel(label);
-  if(user)
-    ret.setUserName(user);
+  if(options.url)
+    ret.setUrl(options.url);
+  if(options.notes)
+    ret.setNotes(options.notes);
+  // TODO: folders..
+  //if(options.folder)
+    //ret.setFolder(options.folder);
+  if(options.username)
+    ret.setUserName(options.username);
+  if(options.password)
+    ret.setPassword(options.password);
   return ret;
 }
 

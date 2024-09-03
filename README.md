@@ -26,12 +26,17 @@ ncpass <command> <label> <user> <password>
 #### Commands
 
 - `list`: List all the passwords in your Nextcloud Passwords vault.
-- `getuser <label>`: Get the username for a password in your Nextcloud Passwords vault.
 - `generate <label> <username>`: Generate a new password and store it in your Nextcloud Passwords vault, also display it. Username is optional.
 - `set <label> <username> <password>`: Store a password in your Nextcloud Passwords vault. Username is optional.
 - `get <label> <username>`: Retrieve a password from your Nextcloud Passwords vault. Username is optional.
+- `getuser <label>`: Get the username for a password in your Nextcloud Passwords vault.
 - `delete <label>`: Delete a password from your Nextcloud Passwords vault.
 
+Additional parameters for set and create commands:
+- `--url <url>`: The URL for the password entry.
+- `--username <username>`: The username for the password entry.
+- `--notes <notes>`: Notes for the password entry.
+- `--password <password>`: The password for the password entry.
 
 #### Examples
 
