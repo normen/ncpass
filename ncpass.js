@@ -207,6 +207,8 @@ async function getExisting(label, user = ''){
   // show all in collection
   var ret = new Password();
   ret.setLabel(label);
+  if(user)
+    ret.setUserName(user);
   for (let password of passwordCollection) {
     if(password.getLabel() == label) {
       if(user == ''){
